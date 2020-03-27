@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Tests the DataLog class
 #
@@ -41,6 +41,26 @@ class DataLogTest(unittest.TestCase):
     Tests the DataLog's functions.
     """
 
+    def test_append_after_access(self):
+        # Test appending to a log after it's been used by matplotlib (caused bug, see #410)
+        # Causes issue in python3, but not in python2
+
+        import matplotlib
+        matplotlib.use('template')
+        import matplotlib.pyplot as plt
+
+        # Create log, write to it
+        m, p, _ = myokit.load('example')
+        s = myokit.Simulation(m, p)
+
+        d = s.run(100)
+
+        plt.figure()
+        plt.plot(d.time(), d['membrane.V'])
+
+        d = s.run(100, log=d)
+
+    '''
     def test_extend(self):
         # Test the extend function.
 
@@ -2250,7 +2270,7 @@ class DataLogTest(unittest.TestCase):
         # Check name
         self.assertEqual(v.name(), 'v')
         self.assertEqual(w.name(), 'w')
-
+    '''
 
 if __name__ == '__main__':
     print('Add -v for more debug output')

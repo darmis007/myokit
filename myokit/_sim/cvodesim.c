@@ -908,7 +908,7 @@ for var in model.variables(deep=True, state=False, bound=False, const=False):
                 Py_XDECREF(ret);
                 if (ret == NULL) {
                     flt = NULL;
-                    PyErr_SetString(PyExc_Exception, "Call to append() failed on logging list.");
+                    //PyErr_SetString(PyExc_Exception, "Call to append() failed on logging list.");
                     return sim_clean();
                 }
             }
@@ -1176,7 +1176,7 @@ sim_step(PyObject *self, PyObject *args)
                     Py_DECREF(flt); flt = NULL;
                     Py_XDECREF(ret);
                     if (ret == NULL) {
-                        PyErr_SetString(PyExc_Exception, "Call to append() failed on logging list.");
+                        //PyErr_SetString(PyExc_Exception, "Call to append() failed on logging list.");
                         return sim_clean();
                     }
                     ret = NULL;
