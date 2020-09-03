@@ -1,0 +1,1 @@
+WARNING:myokit:Using development version of Myokit. This may contain untested features and bugs. Please see http://myokit.org for the latest stable release.

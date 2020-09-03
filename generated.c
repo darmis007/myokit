@@ -1,130 +1,11 @@
-<?
-# cvodessim.c
-#
-# A pype template for a single cell CVODES-based simulation that can calculate
-# sensitivities of variables ``v`` w.r.t. parameters or initial conditions and
-# perform root-finding.
-#
-# Required variables
-# -----------------------------------------------------------------------------
-# module_name           A module name
-# model                 A myokit model
-# equations             The ordered equations (grouped by component)
-# s_dependents          The dependent expressions y in dy/sx
-# s_independents        The independent expressions x in dy/dx
-# s_output_equations
-# apd_var               A variable from the model used to track threshold
-#                       crossings (or None)
-# bound_variables       A dict mapping variables to TODO
-# literals              An ordered dict mapping variables to equations, for all
-#                       constants with zero dependencies.
-# literal_derived       An ordered dict mapping variables to equations, for all
-#                       constants that depend on literals.
-# parameters            An ordered dict mapping variables to equations, for all
-#                       constants used as parameters in sensitivity
-#                       calculations.
-# parameter_derived     An ordered dict mapping variables to equations, for all
-#                       constants that depend on parameters.
-# -----------------------------------------------------------------------------
-#
-# This file is part of Myokit.
-# See http://myokit.org for copyright, sharing, and licensing details.
-#
-import myokit
-import myokit.formats.ansic as ansic
 
-# Calculating sensitivities?
-use_sensitivities = len(s_dependents) > 0
-
-
-def si(var_or_lhs):
-    """
-    Returns the index of an expression (or variable) in the list of independent
-    expressions, as a string.
-    """
-    if isinstance(var_or_lhs, myokit.Variable):
-        if var_or_lhs.is_state():
-            lhs = myokit.InitialValue(myokit.Name(var_or_lhs))
-        else:
-            lhs = myokit.Name(var_or_lhs)
-    else:
-        lhs = var_or_lhs
-    return str(s_independents.index(lhs))
-
-
-def v(var, prepend_model=True):
-    """
-    Returns a variable name to use in code.
-
-    Names:
-
-    - Constant: C
-    - Parameter: P (sensitivity)
-    - Intermediary variable: V
-    - State: Y
-    - Derivative: D
-
-    - Partial derivative of intermediary variable: Sx_V
-    - Partial derivative of state variable: Sx_Y
-    - Partial derivative of derivative: Sx_D
-
-    """
-    if not isinstance(var, (myokit.LhsExpression, myokit.Variable)):
-        raise ValueError(
-            'v() called with ' + str(var) + ' of type ' + str(type(var)))
-
-    # Add model-> in front?
-    pre = 'model->' if prepend_model else ''
-
-    # Partial derivative
-    if isinstance(var, myokit.PartialDerivative):
-        i = var.dependent_expression()
-        j = si(var.independent_expression())
-        if isinstance(i, myokit.Derivative):
-            return pre + 'S' + j + '_D_' + i.var().uname()
-        if i.var().is_state():
-            return pre + 'S' + j + '_Y_' + i.var().uname()
-        return pre + 'S' + j + '_V_' + i.var().uname()
-
-    # Derivative
-    if isinstance(var, myokit.Derivative):
-        return pre + 'D_' + var.var().uname()
-
-    # Name given? get variable object from name
-    if isinstance(var, myokit.Name):
-        var = var.var()
-
-    # State
-    if var.is_state():
-        return pre + 'Y_' + var.uname()
-
-    # Parameter
-    if var in parameters:
-        return pre + 'P_' + var.uname()
-
-    # Constant
-    if var.is_constant():
-        return pre + 'C_' + var.uname()
-
-    # Intermediary variable
-    return pre + 'V_' + var.uname()
-
-
-# Create expression writer
-w = ansic.AnsiCExpressionWriter()
-w.set_lhs_function(v)
-
-# Tab
-tab = '    '
-
-?>
 #include <Python.h>
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <cvodes/cvodes.h>
 #include <nvector/nvector_serial.h>
-#define MYOKIT_SUNDIALS_VERSION <?= myokit.SUNDIALS_VERSION ?>
+#define MYOKIT_SUNDIALS_VERSION 30100
 #if MYOKIT_SUNDIALS_VERSION >= 30000
     #include <sunmatrix/sunmatrix_dense.h>
     #include <sunlinsol/sunlinsol_dense.h>
@@ -245,32 +126,62 @@ struct Model_Mem {
     int n_literals;
 
     /* Bound variables */
-<?
-for var in bound_variables:
-    print(tab + 'realtype ' + v(var, False) + ';')
-?>
+    realtype V_time;
+    realtype V_pace;
+
     /* Literal-derived constants */
-<?
-for var in literal_derived:
-    print(tab + 'realtype ' + v(var, False) + ';')
-?>
+    realtype C_RTF;
+    realtype C_gK;
+    realtype C_ik_IK_E;
+    realtype C_ENa;
+    realtype C_xp1;
+    realtype C_ik1_E;
+    realtype C_gK1;
+
     /* Parameter-derived constants */
-<?
-for var in parameter_derived:
-    print(tab + 'realtype ' + v(var, False) + ';')
-?>
+    realtype C_gNa2;
+
     /* Intermediary variables */
-<?
-for var in model.variables(inter=True, deep=True):
-    print(tab + 'realtype ' + v(var, False) + ';')
-?>
+    realtype V_i_ion;
+    realtype V_i_stim;
+    realtype V_ik_x_alpha;
+    realtype V_ik_x_beta;
+    realtype V_xi;
+    realtype V_IK;
+    realtype V_a;
+    realtype V_ina_m_alpha;
+    realtype V_ina_m_beta;
+    realtype V_ina_h_alpha;
+    realtype V_ina_h_beta;
+    realtype V_ina_j_alpha;
+    realtype V_ina_j_beta;
+    realtype V_INa;
+    realtype V_Kp;
+    realtype V_IKp;
+    realtype V_ica_E;
+    realtype V_ica_d_alpha;
+    realtype V_ica_d_beta;
+    realtype V_ica_f_alpha;
+    realtype V_ica_f_beta;
+    realtype V_ICa;
+    realtype V_g;
+    realtype V_ik1_g_alpha;
+    realtype V_ik1_g_beta;
+    realtype V_IK1;
+    realtype V_Ib;
+
     /* Sensitivity output variables */
-<?
-for eqs in s_output_equations:
-    for eq in eqs:
-        if not eq.lhs.dependent_expression().is_derivative():
-            print(tab + 'realtype ' + v(eq.lhs, False) + ';')
-?>
+    realtype S0_V_ina_m_alpha;
+    realtype S0_V_ina_m_beta;
+    realtype S0_V_gNa2;
+    realtype S0_V_INa;
+    realtype S1_V_ina_m_alpha;
+    realtype S1_V_ina_m_beta;
+    realtype S1_V_INa;
+    realtype S2_V_ina_m_alpha;
+    realtype S2_V_ina_m_beta;
+    realtype S2_V_INa;
+
     /* State variables and derivatives */
     realtype* states;
     realtype* derivatives;
@@ -294,40 +205,104 @@ typedef struct Model_Mem* Model;
 /*
  * State-variable aliases
  */
-<?
-for i, var in enumerate(model.states()):
-    print('#define ' + v(var, False) + ' states[' + str(i) + ']')
-for i, var in enumerate(model.states()):
-    print('#define ' + v(var.lhs(), False) + ' derivatives[' + str(i) + ']')
-?>
+#define Y_V states[0]
+#define Y_m states[1]
+#define Y_h states[2]
+#define Y_j states[3]
+#define Y_d states[4]
+#define Y_f states[5]
+#define Y_x states[6]
+#define Y_Ca_i states[7]
+#define D_V derivatives[0]
+#define D_m derivatives[1]
+#define D_h derivatives[2]
+#define D_j derivatives[3]
+#define D_d derivatives[4]
+#define D_f derivatives[5]
+#define D_x derivatives[6]
+#define D_Ca_i derivatives[7]
+
 /*
  * State-variable sensitivity aliases
  */
-<?
-for i, iexp in enumerate(s_independents):
-    offset = i * model.count_states()
-    for j, var in enumerate(model.states()):
-        expr = myokit.PartialDerivative(myokit.Name(var), iexp)
-        print('#define ' + v(expr, False) + ' s_states[' + str(offset + j) + ']')
-    for j, var in enumerate(model.states()):
-        expr = myokit.PartialDerivative(var.lhs(), iexp)
-        print('#define ' + v(expr, False) + ' s_derivatives[' + str(offset + j) + ']')
-    print()
-?>
+#define S0_Y_V s_states[0]
+#define S0_Y_m s_states[1]
+#define S0_Y_h s_states[2]
+#define S0_Y_j s_states[3]
+#define S0_Y_d s_states[4]
+#define S0_Y_f s_states[5]
+#define S0_Y_x s_states[6]
+#define S0_Y_Ca_i s_states[7]
+#define S0_D_V s_derivatives[0]
+#define S0_D_m s_derivatives[1]
+#define S0_D_h s_derivatives[2]
+#define S0_D_j s_derivatives[3]
+#define S0_D_d s_derivatives[4]
+#define S0_D_f s_derivatives[5]
+#define S0_D_x s_derivatives[6]
+#define S0_D_Ca_i s_derivatives[7]
+
+#define S1_Y_V s_states[8]
+#define S1_Y_m s_states[9]
+#define S1_Y_h s_states[10]
+#define S1_Y_j s_states[11]
+#define S1_Y_d s_states[12]
+#define S1_Y_f s_states[13]
+#define S1_Y_x s_states[14]
+#define S1_Y_Ca_i s_states[15]
+#define S1_D_V s_derivatives[8]
+#define S1_D_m s_derivatives[9]
+#define S1_D_h s_derivatives[10]
+#define S1_D_j s_derivatives[11]
+#define S1_D_d s_derivatives[12]
+#define S1_D_f s_derivatives[13]
+#define S1_D_x s_derivatives[14]
+#define S1_D_Ca_i s_derivatives[15]
+
+#define S2_Y_V s_states[16]
+#define S2_Y_m s_states[17]
+#define S2_Y_h s_states[18]
+#define S2_Y_j s_states[19]
+#define S2_Y_d s_states[20]
+#define S2_Y_f s_states[21]
+#define S2_Y_x s_states[22]
+#define S2_Y_Ca_i s_states[23]
+#define S2_D_V s_derivatives[16]
+#define S2_D_m s_derivatives[17]
+#define S2_D_h s_derivatives[18]
+#define S2_D_j s_derivatives[19]
+#define S2_D_d s_derivatives[20]
+#define S2_D_f s_derivatives[21]
+#define S2_D_x s_derivatives[22]
+#define S2_D_Ca_i s_derivatives[23]
+
+
 /*
  * Parameter aliases
  */
-<?
-for i, var in enumerate(parameters):
-    print('#define ' + v(var, False) + ' parameters[' + str(i) + ']')
-?>
+#define P_gNa parameters[0]
+#define P_gCa parameters[1]
+
 /*
  * Literal aliases
  */
-<?
-for i, var in enumerate(literals):
-    print('#define ' + v(var, False) + ' literals[' + str(i) + ']')
-?>
+#define C_Eb literals[0]
+#define C_gb literals[1]
+#define C_Ca_o literals[2]
+#define C_F literals[3]
+#define C_K_i literals[4]
+#define C_K_o literals[5]
+#define C_Na_i literals[6]
+#define C_Na_o literals[7]
+#define C_R literals[8]
+#define C_T literals[9]
+#define C_PNa_K literals[10]
+#define C_p1 literals[11]
+#define C_gKp literals[12]
+#define C_C literals[13]
+#define C_i_diff literals[14]
+#define C_stim_amplitude literals[15]
+
 /*
  * Creates and returns a model struct.
  *
@@ -346,30 +321,29 @@ Model Model_Create(Model_Flag* flag)
     }
 
     /* Number of states */
-    model->n_states = <?= model.count_states() ?>;
+    model->n_states = 8;
     printf("\nCreating\n");
     printf("Set n_states: %d\n", model->n_states);
 
     /* Number of literal constants */
-    model->n_literals = <?= len(literals) ?>;
+    model->n_literals = 16;
 
     /* Whether or not this model is an ODE */
-    model->is_ode = <?= 1 if model.count_states() > 0 else 0 ?>;
+    model->is_ode = 1;
 
     /* Number of parameters and initial states to calculate sensitivities w.r.t. */
-    model->n_sens = <?= len(s_independents) ?>;
+    model->n_sens = 3;
 
     /* Number of parameters to calculate sensitivities w.r.t. */
-    model->n_parameters = <?= len(parameters) ?>;
+    model->n_parameters = 2;
 
     /* Number of initial values to calculate sensitivities w.r.t. */
-    model->n_initials = <?= len(initials) ?>;
+    model->n_initials = 1;
 
     /* Set default values of bound variables */
-<?
-for var in model.variables(bound=True, deep=True):
-    print(tab + v(var) + ' = 0;')
-?>
+    model->V_time = 0;
+    model->V_pace = 0;
+
     /* State variables and derivatives */
     model->states = NULL;
     model->derivatives = NULL;
@@ -397,10 +371,8 @@ for var in model.variables(bound=True, deep=True):
     if (model->n_initials) {
         model->i_initials = (int*)malloc(model->n_initials * sizeof(int));
     }
-<?
-for i, expr in enumerate(initials):
-    print(tab + 'model->i_initials[' + str(i) + '] = ' + str(expr.var().indice()) + ';')
-?>
+    model->i_initials[0] = 7;
+
 
     /* Literal constants */
     model->literals = NULL;
@@ -411,13 +383,71 @@ for i, expr in enumerate(initials):
     /* Set flag to indicate success */
     if (flag != 0) { *flag = Model_OK; }
 
-<?
-#TODOTODO
-if False:
-    print(tab + 'printf("----------------------------------------------\\n");')
-    for var in model.variables(deep=True):
-        print(tab + 'printf("' + v(var) +' = %e\\n", ' + v(var) + ');')
-?>
+    printf("----------------------------------------------\n");
+    printf("model->C_C = %e\n", model->C_C);
+    printf("model->Y_V = %e\n", model->Y_V);
+    printf("model->V_i_ion = %e\n", model->V_i_ion);
+    printf("model->V_i_stim = %e\n", model->V_i_stim);
+    printf("model->C_stim_amplitude = %e\n", model->C_stim_amplitude);
+    printf("model->C_i_diff = %e\n", model->C_i_diff);
+    printf("model->Y_x = %e\n", model->Y_x);
+    printf("model->V_ik_x_alpha = %e\n", model->V_ik_x_alpha);
+    printf("model->V_ik_x_beta = %e\n", model->V_ik_x_beta);
+    printf("model->V_xi = %e\n", model->V_xi);
+    printf("model->V_IK = %e\n", model->V_IK);
+    printf("model->C_gK = %e\n", model->C_gK);
+    printf("model->C_ik_IK_E = %e\n", model->C_ik_IK_E);
+    printf("model->C_PNa_K = %e\n", model->C_PNa_K);
+    printf("model->C_ENa = %e\n", model->C_ENa);
+    printf("model->V_a = %e\n", model->V_a);
+    printf("model->Y_m = %e\n", model->Y_m);
+    printf("model->V_ina_m_alpha = %e\n", model->V_ina_m_alpha);
+    printf("model->V_ina_m_beta = %e\n", model->V_ina_m_beta);
+    printf("model->Y_h = %e\n", model->Y_h);
+    printf("model->V_ina_h_alpha = %e\n", model->V_ina_h_alpha);
+    printf("model->V_ina_h_beta = %e\n", model->V_ina_h_beta);
+    printf("model->Y_j = %e\n", model->Y_j);
+    printf("model->V_ina_j_alpha = %e\n", model->V_ina_j_alpha);
+    printf("model->V_ina_j_beta = %e\n", model->V_ina_j_beta);
+    printf("model->P_gNa = %e\n", model->P_gNa);
+    printf("model->C_gNa2 = %e\n", model->C_gNa2);
+    printf("model->V_INa = %e\n", model->V_INa);
+    printf("model->C_p1 = %e\n", model->C_p1);
+    printf("model->C_xp1 = %e\n", model->C_xp1);
+    printf("model->C_gKp = %e\n", model->C_gKp);
+    printf("model->V_Kp = %e\n", model->V_Kp);
+    printf("model->V_IKp = %e\n", model->V_IKp);
+    printf("model->V_ica_E = %e\n", model->V_ica_E);
+    printf("model->Y_Ca_i = %e\n", model->Y_Ca_i);
+    printf("model->Y_d = %e\n", model->Y_d);
+    printf("model->V_ica_d_alpha = %e\n", model->V_ica_d_alpha);
+    printf("model->V_ica_d_beta = %e\n", model->V_ica_d_beta);
+    printf("model->Y_f = %e\n", model->Y_f);
+    printf("model->V_ica_f_alpha = %e\n", model->V_ica_f_alpha);
+    printf("model->V_ica_f_beta = %e\n", model->V_ica_f_beta);
+    printf("model->P_gCa = %e\n", model->P_gCa);
+    printf("model->V_ICa = %e\n", model->V_ICa);
+    printf("model->C_ik1_E = %e\n", model->C_ik1_E);
+    printf("model->C_gK1 = %e\n", model->C_gK1);
+    printf("model->V_g = %e\n", model->V_g);
+    printf("model->V_ik1_g_alpha = %e\n", model->V_ik1_g_alpha);
+    printf("model->V_ik1_g_beta = %e\n", model->V_ik1_g_beta);
+    printf("model->V_IK1 = %e\n", model->V_IK1);
+    printf("model->C_gb = %e\n", model->C_gb);
+    printf("model->C_Eb = %e\n", model->C_Eb);
+    printf("model->V_Ib = %e\n", model->V_Ib);
+    printf("model->C_K_o = %e\n", model->C_K_o);
+    printf("model->C_K_i = %e\n", model->C_K_i);
+    printf("model->C_Na_o = %e\n", model->C_Na_o);
+    printf("model->C_Na_i = %e\n", model->C_Na_i);
+    printf("model->C_Ca_o = %e\n", model->C_Ca_o);
+    printf("model->C_RTF = %e\n", model->C_RTF);
+    printf("model->C_R = %e\n", model->C_R);
+    printf("model->C_T = %e\n", model->C_T);
+    printf("model->C_F = %e\n", model->C_F);
+    printf("model->V_time = %e\n", model->V_time);
+    printf("model->V_pace = %e\n", model->V_pace);
+
 
     /* Return newly created model */
     return model;
@@ -474,20 +504,9 @@ Model_UpdateBoundVariables(
 {
     if (model == NULL) return Model_INVALID_MODEL;
 
-    <?=v(model.time())?> = time;
-<?
-var = model.binding('pace')
-if var is not None:
-    print(tab + v(var) + ' = pace;')
+    model->V_time = time;
+    model->V_pace = pace;
 
-var = model.binding('realtime')
-if var is not None:
-    print(tab + v(var) + ' = realtime;')
-
-var = model.binding('evaluations')
-if var is not None:
-    print(tab + v(var) + ' = evaluations;')
-?>
     return Model_OK;
 }
 
@@ -504,10 +523,14 @@ Model_Flag
 Model_UpdateLiteralDerivedVariables(Model model)
 {
     if (model == NULL) return Model_INVALID_MODEL;
-<?
-for eq in literal_derived.values():
-    print(tab + w.eq(eq) + ';')
-?>
+    model->C_RTF = model->C_R * model->C_T / model->C_F;
+    model->C_gK = 0.282 * sqrt(model->C_K_o / 5.4);
+    model->C_ik_IK_E = model->C_RTF * log((model->C_K_o + model->C_PNa_K * model->C_Na_o) / (model->C_K_i + model->C_PNa_K * model->C_Na_i));
+    model->C_ENa = model->C_RTF * log(model->C_Na_o / model->C_Na_i);
+    model->C_xp1 = 2.0 + model->C_p1;
+    model->C_ik1_E = model->C_RTF * log(model->C_K_o / model->C_K_i);
+    model->C_gK1 = 0.6047 * sqrt(model->C_K_o / 5.4);
+
     return Model_OK;
 }
 
@@ -523,10 +546,8 @@ Model_Flag
 Model_UpdateParameterDerivedVariables(Model model)
 {
     if (model == NULL) return Model_INVALID_MODEL;
-<?
-for eq in parameter_derived.values():
-    print(tab + w.eq(eq) + ';')
-?>
+    model->C_gNa2 = 2.0 * model->P_gNa;
+
     return Model_OK;
 }
 
@@ -544,33 +565,128 @@ Model_UpdateDerivatives(Model model)
 {
     if (model == NULL) return Model_INVALID_MODEL;
 
-<?
-for label, eqs in equations.items():
-    need_label = True
-    for eq in eqs.equations(const=False, bound=False):
-        var = eq.lhs.var()
+    /* ib */
+    model->V_Ib = model->C_gb * (model->Y_V - model->C_Eb);
+    
+    /* ik */
+    model->V_xi = ((model->Y_V < (-100.0)) ? 1.0 : ((model->Y_V == (-77.0)) ? 2.837 * 0.04 / exp(0.04 * (model->Y_V + 35.0)) : 2.837 * (exp(0.04 * (model->Y_V + 77.0)) - 1.0) / ((model->Y_V + 77.0) * exp(0.04 * (model->Y_V + 35.0)))));
+    model->V_ik_x_alpha = 0.0005 * exp(0.083 * (model->Y_V + 50.0)) / (1.0 + exp(0.057 * (model->Y_V + 50.0)));
+    model->V_ik_x_beta = 0.0013 * exp((-0.06) * (model->Y_V + 20.0)) / (1.0 + exp((-0.04) * (model->Y_V + 20.0)));
+    model->D_x = model->V_ik_x_alpha * (1.0 - model->Y_x) - model->V_ik_x_beta * model->Y_x;
+    model->V_IK = model->C_gK * model->V_xi * model->Y_x * (model->Y_V - model->C_ik_IK_E);
+    
+    /* ina */
+    model->V_a = 1.0 - 1.0 / (1.0 + exp((-(model->Y_V + 40.0)) / 0.24));
+    model->V_ina_m_alpha = 0.32 * (model->Y_V + 47.13) / (1.0 - exp((-0.1) * (model->Y_V + 47.13)));
+    model->V_ina_m_beta = 0.08 * exp((-model->Y_V) / 11.0);
+    model->D_m = model->V_ina_m_alpha * (1.0 - model->Y_m) - model->V_ina_m_beta * model->Y_m;
+    model->V_ina_j_alpha = model->V_a * ((-127140.0) * exp(0.2444 * model->Y_V) - 3.474e-05 * exp((-0.04391) * model->Y_V)) * (model->Y_V + 37.78) / (1.0 + exp(0.311 * (model->Y_V + 79.23)));
+    model->V_ina_j_beta = model->V_a * (0.1212 * exp((-0.01052) * model->Y_V) / (1.0 + exp((-0.1378) * (model->Y_V + 40.14)))) + (1.0 - model->V_a) * (0.3 * exp((-2.535e-07) * model->Y_V) / (1.0 + exp((-0.1) * (model->Y_V + 32.0))));
+    model->D_j = model->V_ina_j_alpha * (1.0 - model->Y_j) - model->V_ina_j_beta * model->Y_j;
+    model->V_INa = model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * (model->Y_V - model->C_ENa) + 1e-05 * model->D_m;
+    model->V_ina_h_alpha = model->V_a * 0.135 * exp((80.0 + model->Y_V) / (-6.8));
+    model->V_ina_h_beta = model->V_a * (model->C_xp1 * exp(0.079 * model->Y_V) + 310000.0 * exp(0.35 * model->Y_V)) + (1.0 - model->V_a) / (0.13 * (1.0 + exp((model->Y_V + 10.66) / (-11.1))));
+    model->D_h = model->V_ina_h_alpha * (1.0 - model->Y_h) - model->V_ina_h_beta * model->Y_h;
+    
+    /* ica */
+    model->V_ica_E = 7.7 - 13.0287 * log(model->Y_Ca_i / model->C_Ca_o);
+    model->V_ica_d_alpha = 0.095 * exp((-0.01) * (model->Y_V - 5.0)) / (1.0 + exp((-0.072) * (model->Y_V - 5.0)));
+    model->V_ica_d_beta = 0.07 * exp((-0.017) * (model->Y_V + 44.0)) / (1.0 + exp(0.05 * (model->Y_V + 44.0)));
+    model->D_d = model->V_ica_d_alpha * (1.0 - model->Y_d) - model->V_ica_d_beta * model->Y_d;
+    model->V_ica_f_alpha = 0.012 * exp((-0.008) * (model->Y_V + 28.0)) / (1.0 + exp(0.15 * (model->Y_V + 28.0)));
+    model->V_ica_f_beta = 0.0065 * exp((-0.02) * (model->Y_V + 30.0)) / (1.0 + exp((-0.2) * (model->Y_V + 30.0)));
+    model->D_f = model->V_ica_f_alpha * (1.0 - model->Y_f) - model->V_ica_f_beta * model->Y_f;
+    model->V_ICa = model->P_gCa * model->Y_d * model->Y_f * (model->Y_V - model->V_ica_E);
+    model->D_Ca_i = (-0.0001) * model->V_ICa + 0.07 * (0.0001 - model->Y_Ca_i);
+    
+    /* ik1 */
+    model->V_ik1_g_alpha = 1.02 / (1.0 + exp(0.2385 * (model->Y_V - model->C_ik1_E - 59.215)));
+    model->V_ik1_g_beta = (0.49124 * exp(0.08032 * (model->Y_V - model->C_ik1_E + 5.476)) + 1.0 * exp(0.06175 * (model->Y_V - model->C_ik1_E - 594.31))) / (1.0 + exp((-0.5143) * (model->Y_V - model->C_ik1_E + 4.753)));
+    model->V_g = model->V_ik1_g_alpha / (model->V_ik1_g_alpha + model->V_ik1_g_beta);
+    model->V_IK1 = model->C_gK1 * model->V_g * (model->Y_V - model->C_ik1_E);
+    
+    /* ikp */
+    model->V_Kp = 1.0 / (1.0 + exp((7.488 - model->Y_V) / 5.98));
+    model->V_IKp = model->C_gKp * model->V_Kp * (model->Y_V - model->C_ik1_E);
+    
+    /* membrane */
+    model->V_i_ion = model->V_INa + model->V_IK + model->V_Ib + model->V_IKp + model->V_IK1 + model->V_ICa;
+    model->V_i_stim = model->V_pace * model->C_stim_amplitude;
+    model->D_V = (-(1.0 / model->C_C)) * (model->V_i_ion + model->C_i_diff + model->V_i_stim);
+    
+    printf("----------------------------------------------\n");
+    printf("model->Y_V = %e\n", model->Y_V);
+    printf("model->Y_m = %e\n", model->Y_m);
+    printf("model->Y_h = %e\n", model->Y_h);
+    printf("model->Y_j = %e\n", model->Y_j);
+    printf("model->Y_d = %e\n", model->Y_d);
+    printf("model->Y_f = %e\n", model->Y_f);
+    printf("model->Y_x = %e\n", model->Y_x);
+    printf("model->Y_Ca_i = %e\n", model->Y_Ca_i);
+    printf("model->C_Eb = %e\n", model->C_Eb);
+    printf("model->C_gb = %e\n", model->C_gb);
+    printf("model->V_Ib = %e\n", model->V_Ib);
+    printf("model->C_Ca_o = %e\n", model->C_Ca_o);
+    printf("model->C_F = %e\n", model->C_F);
+    printf("model->C_K_i = %e\n", model->C_K_i);
+    printf("model->C_K_o = %e\n", model->C_K_o);
+    printf("model->C_Na_i = %e\n", model->C_Na_i);
+    printf("model->C_Na_o = %e\n", model->C_Na_o);
+    printf("model->C_R = %e\n", model->C_R);
+    printf("model->C_T = %e\n", model->C_T);
+    printf("model->C_RTF = %e\n", model->C_RTF);
+    printf("model->V_pace = %e\n", model->V_pace);
+    printf("model->V_time = %e\n", model->V_time);
+    printf("model->V_xi = %e\n", model->V_xi);
+    printf("model->V_ik_x_alpha = %e\n", model->V_ik_x_alpha);
+    printf("model->V_ik_x_beta = %e\n", model->V_ik_x_beta);
+    printf("model->D_x = %e\n", model->D_x);
+    printf("model->C_PNa_K = %e\n", model->C_PNa_K);
+    printf("model->C_gK = %e\n", model->C_gK);
+    printf("model->C_ik_IK_E = %e\n", model->C_ik_IK_E);
+    printf("model->V_IK = %e\n", model->V_IK);
+    printf("model->C_ENa = %e\n", model->C_ENa);
+    printf("model->V_a = %e\n", model->V_a);
+    printf("model->P_gNa = %e\n", model->P_gNa);
+    printf("model->C_p1 = %e\n", model->C_p1);
+    printf("model->V_ina_m_alpha = %e\n", model->V_ina_m_alpha);
+    printf("model->V_ina_m_beta = %e\n", model->V_ina_m_beta);
+    printf("model->D_m = %e\n", model->D_m);
+    printf("model->C_gNa2 = %e\n", model->C_gNa2);
+    printf("model->C_xp1 = %e\n", model->C_xp1);
+    printf("model->V_ina_j_alpha = %e\n", model->V_ina_j_alpha);
+    printf("model->V_ina_j_beta = %e\n", model->V_ina_j_beta);
+    printf("model->D_j = %e\n", model->D_j);
+    printf("model->V_INa = %e\n", model->V_INa);
+    printf("model->V_ina_h_alpha = %e\n", model->V_ina_h_alpha);
+    printf("model->V_ina_h_beta = %e\n", model->V_ina_h_beta);
+    printf("model->D_h = %e\n", model->D_h);
+    printf("model->V_ica_E = %e\n", model->V_ica_E);
+    printf("model->P_gCa = %e\n", model->P_gCa);
+    printf("model->V_ica_d_alpha = %e\n", model->V_ica_d_alpha);
+    printf("model->V_ica_d_beta = %e\n", model->V_ica_d_beta);
+    printf("model->D_d = %e\n", model->D_d);
+    printf("model->V_ica_f_alpha = %e\n", model->V_ica_f_alpha);
+    printf("model->V_ica_f_beta = %e\n", model->V_ica_f_beta);
+    printf("model->D_f = %e\n", model->D_f);
+    printf("model->V_ICa = %e\n", model->V_ICa);
+    printf("model->D_Ca_i = %e\n", model->D_Ca_i);
+    printf("model->C_ik1_E = %e\n", model->C_ik1_E);
+    printf("model->C_gK1 = %e\n", model->C_gK1);
+    printf("model->V_ik1_g_alpha = %e\n", model->V_ik1_g_alpha);
+    printf("model->V_ik1_g_beta = %e\n", model->V_ik1_g_beta);
+    printf("model->V_g = %e\n", model->V_g);
+    printf("model->V_IK1 = %e\n", model->V_IK1);
+    printf("model->V_Kp = %e\n", model->V_Kp);
+    printf("model->C_gKp = %e\n", model->C_gKp);
+    printf("model->V_IKp = %e\n", model->V_IKp);
+    printf("model->C_C = %e\n", model->C_C);
+    printf("model->C_i_diff = %e\n", model->C_i_diff);
+    printf("model->V_i_ion = %e\n", model->V_i_ion);
+    printf("model->C_stim_amplitude = %e\n", model->C_stim_amplitude);
+    printf("model->V_i_stim = %e\n", model->V_i_stim);
+    printf("model->D_V = %e\n", model->D_V);
 
-        # Print label for component
-        if need_label:
-            print(tab + '/* ' + label + ' */')
-            need_label = False
-
-        # Print equation
-        print(tab + w.eq(eq) + ';')
-
-    if not need_label:
-        print(tab)
-
-#TODOTODO
-if False:
-    print(tab + 'printf("----------------------------------------------\\n");')
-    for var in model.states():
-        print(tab + 'printf("' + v(var) +' = %e\\n", ' + v(var) + ');')
-    for eqs in equations.values():
-        for eq in eqs:
-            print(tab + 'printf("' + v(eq.lhs) +' = %e\\n", ' + v(eq.lhs) + ');')
-
-?>
     return Model_OK;
 }
 
@@ -789,7 +905,7 @@ rhs(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     }
 
     /* Fill ydot and return */
-    for (i=0; i<model->n_states; i++) {
+    for (i=0; i<model->n_parameters; i++) {
         NV_Ith_S(ydot, i) = model->derivatives[i];
     }
 
@@ -827,26 +943,36 @@ calculate_sensitivity_outputs(realtype t, N_Vector y, N_Vector ydot,
             return -1;  /* Negative value signals irrecoverable error to CVODE */
         }
     }
-<?
-for eqs in s_output_equations:
-    for i, eq in enumerate(eqs):
-        if i == 0:
-            print(tab + '/* Sensitivity w.r.t. ' + eq.lhs.independent_expression().code() + ' */')
-        print(tab + w.eq(eq) + ';')
-    print()
-?>
+    /* Sensitivity w.r.t. ina.gNa */
+    model->S0_V_ina_m_alpha = (0.32 * model->S0_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S0_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
+    model->S0_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S0_Y_V) / 11.0));
+    model->S0_D_m = model->S0_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S0_Y_m) - (model->S0_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S0_Y_m);
+    model->S0_V_gNa2 = 2.0 * 1.0;
+    model->S0_V_INa = (((model->S0_V_gNa2 * pow(model->Y_m, 3.0) + model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S0_Y_m)) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S0_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S0_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S0_Y_V + 1e-05 * model->S0_D_m;
+
+    /* Sensitivity w.r.t. ica.gCa */
+    model->S1_V_ina_m_alpha = (0.32 * model->S1_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S1_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
+    model->S1_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S1_Y_V) / 11.0));
+    model->S1_D_m = model->S1_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S1_Y_m) - (model->S1_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S1_Y_m);
+    model->S1_V_INa = ((model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S1_Y_m) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S1_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S1_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S1_Y_V + 1e-05 * model->S1_D_m;
+
+    /* Sensitivity w.r.t. init(ica.Ca_i) */
+    model->S2_V_ina_m_alpha = (0.32 * model->S2_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S2_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
+    model->S2_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S2_Y_V) / 11.0));
+    model->S2_D_m = model->S2_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S2_Y_m) - (model->S2_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S2_Y_m);
+    model->S2_V_INa = ((model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S2_Y_m) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S2_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S2_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S2_Y_V + 1e-05 * model->S2_D_m;
+
+
     return 0;
 }
 
 /*
  * Root finding function
- */<?
-root_finding_indice = apd_var.indice() if apd_var is not None else 0
-?>
+ */
 static int
 root_finding(realtype t, N_Vector y, realtype *gout, void *user_data)
 {
-    gout[0] = NV_Ith_S(y, <?=root_finding_indice?>) - rootfinding_threshold;
+    gout[0] = NV_Ith_S(y, 0) - rootfinding_threshold;
     return 0;
 }
 
@@ -1409,34 +1535,67 @@ sim_init(PyObject *self, PyObject *args)
         inside log_add, before the comparison. */
 
     /* Check states */
-<?
-for var in model.states():
-    print(tab + 'i += log_add(log_dict, logs, vars, i, "' + var.qname() + '", &NV_Ith_S(y_log, ' + str(var.indice())  + '));')
-?>
+    i += log_add(log_dict, logs, vars, i, "membrane.V", &NV_Ith_S(y_log, 0));
+    i += log_add(log_dict, logs, vars, i, "ina.m", &NV_Ith_S(y_log, 1));
+    i += log_add(log_dict, logs, vars, i, "ina.h", &NV_Ith_S(y_log, 2));
+    i += log_add(log_dict, logs, vars, i, "ina.j", &NV_Ith_S(y_log, 3));
+    i += log_add(log_dict, logs, vars, i, "ica.d", &NV_Ith_S(y_log, 4));
+    i += log_add(log_dict, logs, vars, i, "ica.f", &NV_Ith_S(y_log, 5));
+    i += log_add(log_dict, logs, vars, i, "ik.x", &NV_Ith_S(y_log, 6));
+    i += log_add(log_dict, logs, vars, i, "ica.Ca_i", &NV_Ith_S(y_log, 7));
+
 
     /* Check derivatives */
     j = i;
-<?
-for var in model.states():
-    print(tab + 'i += log_add(log_dict, logs, vars, i, "dot(' + var.qname() + ')", &NV_Ith_S(dy_log, ' + str(var.indice())  + '));')
-?>
+    i += log_add(log_dict, logs, vars, i, "dot(membrane.V)", &NV_Ith_S(dy_log, 0));
+    i += log_add(log_dict, logs, vars, i, "dot(ina.m)", &NV_Ith_S(dy_log, 1));
+    i += log_add(log_dict, logs, vars, i, "dot(ina.h)", &NV_Ith_S(dy_log, 2));
+    i += log_add(log_dict, logs, vars, i, "dot(ina.j)", &NV_Ith_S(dy_log, 3));
+    i += log_add(log_dict, logs, vars, i, "dot(ica.d)", &NV_Ith_S(dy_log, 4));
+    i += log_add(log_dict, logs, vars, i, "dot(ica.f)", &NV_Ith_S(dy_log, 5));
+    i += log_add(log_dict, logs, vars, i, "dot(ik.x)", &NV_Ith_S(dy_log, 6));
+    i += log_add(log_dict, logs, vars, i, "dot(ica.Ca_i)", &NV_Ith_S(dy_log, 7));
+
     log_deriv = (i > j);
 
     /* Check bound variables */
     j = i;
-<?
-for var in bound_variables:
-    print(tab + 'i += log_add(log_dict, logs, vars, i, "' + var.qname() + '", &' + v(var)  + ');')
-?>
+    i += log_add(log_dict, logs, vars, i, "engine.time", &model->V_time);
+    i += log_add(log_dict, logs, vars, i, "engine.pace", &model->V_pace);
+
     log_bound = (i > j);
 
     /* Remaining variables will require an extra rhs() call to evaluate their
        values at every log point */
     j = i;
-<?
-for var in model.variables(deep=True, state=False, bound=False, const=False):
-    print(tab + 'i += log_add(log_dict, logs, vars, i, "' + var.qname() + '", &' + v(var)  + ');')
-?>
+    i += log_add(log_dict, logs, vars, i, "membrane.i_ion", &model->V_i_ion);
+    i += log_add(log_dict, logs, vars, i, "membrane.i_stim", &model->V_i_stim);
+    i += log_add(log_dict, logs, vars, i, "ik.x.alpha", &model->V_ik_x_alpha);
+    i += log_add(log_dict, logs, vars, i, "ik.x.beta", &model->V_ik_x_beta);
+    i += log_add(log_dict, logs, vars, i, "ik.xi", &model->V_xi);
+    i += log_add(log_dict, logs, vars, i, "ik.IK", &model->V_IK);
+    i += log_add(log_dict, logs, vars, i, "ina.a", &model->V_a);
+    i += log_add(log_dict, logs, vars, i, "ina.m.alpha", &model->V_ina_m_alpha);
+    i += log_add(log_dict, logs, vars, i, "ina.m.beta", &model->V_ina_m_beta);
+    i += log_add(log_dict, logs, vars, i, "ina.h.alpha", &model->V_ina_h_alpha);
+    i += log_add(log_dict, logs, vars, i, "ina.h.beta", &model->V_ina_h_beta);
+    i += log_add(log_dict, logs, vars, i, "ina.j.alpha", &model->V_ina_j_alpha);
+    i += log_add(log_dict, logs, vars, i, "ina.j.beta", &model->V_ina_j_beta);
+    i += log_add(log_dict, logs, vars, i, "ina.INa", &model->V_INa);
+    i += log_add(log_dict, logs, vars, i, "ikp.Kp", &model->V_Kp);
+    i += log_add(log_dict, logs, vars, i, "ikp.IKp", &model->V_IKp);
+    i += log_add(log_dict, logs, vars, i, "ica.E", &model->V_ica_E);
+    i += log_add(log_dict, logs, vars, i, "ica.d.alpha", &model->V_ica_d_alpha);
+    i += log_add(log_dict, logs, vars, i, "ica.d.beta", &model->V_ica_d_beta);
+    i += log_add(log_dict, logs, vars, i, "ica.f.alpha", &model->V_ica_f_alpha);
+    i += log_add(log_dict, logs, vars, i, "ica.f.beta", &model->V_ica_f_beta);
+    i += log_add(log_dict, logs, vars, i, "ica.ICa", &model->V_ICa);
+    i += log_add(log_dict, logs, vars, i, "ik1.g", &model->V_g);
+    i += log_add(log_dict, logs, vars, i, "ik1.g.alpha", &model->V_ik1_g_alpha);
+    i += log_add(log_dict, logs, vars, i, "ik1.g.beta", &model->V_ik1_g_beta);
+    i += log_add(log_dict, logs, vars, i, "ik1.IK1", &model->V_IK1);
+    i += log_add(log_dict, logs, vars, i, "ib.Ib", &model->V_Ib);
+
     log_inter = (i > j);
 
     /* Check if log contained extra variables */
@@ -1655,39 +1814,51 @@ for var in model.variables(deep=True, state=False, bound=False, const=False):
                 calculate_sensitivity_outputs(engine_time, y, dy_log, sy, sdy_log, udata);
 
                 /* Write sensitivity matrix to log */
-<?
-def write_sens_matrix(t, sy):
-    print(tab*t + 'l1 = PyTuple_New(' + str(len(s_dependents)) +');')
-    print(tab*t + 'if (l1 == NULL) return sim_clean();')
+                l1 = PyTuple_New(2);
+                if (l1 == NULL) return sim_clean();
 
-    for i, e1 in enumerate(s_dependents):
-        var = e1.var()
-        print()
-        print(tab*t + 'l2 = PyTuple_New(model->n_sens);')
-        print(tab*t + 'if (l2 == NULL) return sim_clean();')
-        print()
+                l2 = PyTuple_New(model->n_sens);
+                if (l2 == NULL) return sim_clean();
 
-        for j, e2 in enumerate(s_independents):
-            if e1.is_name() and e1.var().is_state():
-                print(tab*t + 'flt = PyFloat_FromDouble(NV_Ith_S(' + sy + '[' + str(j) + '], ' + str(var.indice()) + '));')
-            else:
-                pd = myokit.PartialDerivative(e1, e2)
-                print(tab*t + 'flt = PyFloat_FromDouble(' + v(pd) + ');')
-            print(tab*t + 'if (flt == NULL) return sim_clean();')
-            print(tab*t + 'flag = PyTuple_SetItem(l2, ' + str(j) + ', flt); /* Steals reference to flt */')
-            print(tab*t + 'if (flag < 0) return sim_clean();')
+                flt = PyFloat_FromDouble(NV_Ith_S(sy[0], 0));
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
+                flt = PyFloat_FromDouble(NV_Ith_S(sy[1], 0));
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
+                flt = PyFloat_FromDouble(NV_Ith_S(sy[2], 0));
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
 
-        print()
-        print(tab*t + 'flag = PyTuple_SetItem(l1, ' + str(i) + ', l2); /* Steals reference to l2 */')
-        print(tab*t + 'l2 = NULL; flt = NULL;')
+                flag = PyTuple_SetItem(l1, 0, l2); /* Steals reference to l2 */
+                l2 = NULL; flt = NULL;
 
-    print()
-    print(tab*t + 'flag = PyList_Append(sens_list, l1);')
-    print(tab*t + 'Py_XDECREF(l1); l1 = NULL;')
-    print(tab*t + 'if (flag < 0) return sim_clean();')
+                l2 = PyTuple_New(model->n_sens);
+                if (l2 == NULL) return sim_clean();
 
-write_sens_matrix(4, 'sy')
-?>
+                flt = PyFloat_FromDouble(model->S0_V_INa);
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
+                flt = PyFloat_FromDouble(model->S1_V_INa);
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
+                flt = PyFloat_FromDouble(model->S2_V_INa);
+                if (flt == NULL) return sim_clean();
+                flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                if (flag < 0) return sim_clean();
+
+                flag = PyTuple_SetItem(l1, 1, l2); /* Steals reference to l2 */
+                l2 = NULL; flt = NULL;
+
+                flag = PyList_Append(sens_list, l1);
+                Py_XDECREF(l1); l1 = NULL;
+                if (flag < 0) return sim_clean();
+
             }
         }
     }
@@ -1897,9 +2068,51 @@ sim_step(PyObject *self, PyObject *args)
                         calculate_sensitivity_outputs(engine_time, y, dy_log, sy_log, sdy_log, udata);
 
                         /* Write sensitivity matrix to log */
-<?
-write_sens_matrix(6, 'sy_log')
-?>
+                        l1 = PyTuple_New(2);
+                        if (l1 == NULL) return sim_clean();
+
+                        l2 = PyTuple_New(model->n_sens);
+                        if (l2 == NULL) return sim_clean();
+
+                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[0], 0));
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[1], 0));
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[2], 0));
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+
+                        flag = PyTuple_SetItem(l1, 0, l2); /* Steals reference to l2 */
+                        l2 = NULL; flt = NULL;
+
+                        l2 = PyTuple_New(model->n_sens);
+                        if (l2 == NULL) return sim_clean();
+
+                        flt = PyFloat_FromDouble(model->S0_V_INa);
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+                        flt = PyFloat_FromDouble(model->S1_V_INa);
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+                        flt = PyFloat_FromDouble(model->S2_V_INa);
+                        if (flt == NULL) return sim_clean();
+                        flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                        if (flag < 0) return sim_clean();
+
+                        flag = PyTuple_SetItem(l1, 1, l2); /* Steals reference to l2 */
+                        l2 = NULL; flt = NULL;
+
+                        flag = PyList_Append(sens_list, l1);
+                        Py_XDECREF(l1); l1 = NULL;
+                        if (flag < 0) return sim_clean();
+
                     }
 
                     /* Get next logging point */
@@ -1992,9 +2205,51 @@ write_sens_matrix(6, 'sy_log')
 
 
                     /* Write sensitivity matrix to log */
-<?
-write_sens_matrix(5, 'sy')
-?>
+                    l1 = PyTuple_New(2);
+                    if (l1 == NULL) return sim_clean();
+
+                    l2 = PyTuple_New(model->n_sens);
+                    if (l2 == NULL) return sim_clean();
+
+                    flt = PyFloat_FromDouble(NV_Ith_S(sy[0], 0));
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+                    flt = PyFloat_FromDouble(NV_Ith_S(sy[1], 0));
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+                    flt = PyFloat_FromDouble(NV_Ith_S(sy[2], 0));
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+
+                    flag = PyTuple_SetItem(l1, 0, l2); /* Steals reference to l2 */
+                    l2 = NULL; flt = NULL;
+
+                    l2 = PyTuple_New(model->n_sens);
+                    if (l2 == NULL) return sim_clean();
+
+                    flt = PyFloat_FromDouble(model->S0_V_INa);
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+                    flt = PyFloat_FromDouble(model->S1_V_INa);
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+                    flt = PyFloat_FromDouble(model->S2_V_INa);
+                    if (flt == NULL) return sim_clean();
+                    flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
+                    if (flag < 0) return sim_clean();
+
+                    flag = PyTuple_SetItem(l1, 1, l2); /* Steals reference to l2 */
+                    l2 = NULL; flt = NULL;
+
+                    flag = PyList_Append(sens_list, l1);
+                    Py_XDECREF(l1); l1 = NULL;
+                    if (flag < 0) return sim_clean();
+
                 }
 
             }
@@ -2140,12 +2395,10 @@ sim_eval_derivatives(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_Exception, "Unable to allocate space to store parameter values.");
         return sim_clean();
     }
-<?
-for var in parameters:
-    print(tab + 'udata->p[' + si(var) + '] = ' + v(var) + ';')
-for expr in initials:
-    print(tab + 'udata->p[' + si(expr) + '] = NV_Ith_S(y, ' + str(expr.var().indice()) + ');')
-?>
+    udata->p[0] = model->P_gNa;
+    udata->p[1] = model->P_gCa;
+    udata->p[2] = NV_Ith_S(y, 7);
+
 
     /* Set simulation time and pacing variable */
     engine_time = time_in;
@@ -2229,7 +2482,7 @@ static PyMethodDef SimMethods[] = {
 
     static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
-        "<?= module_name ?>",       /* m_name */
+        "myokit_sim_1_8590818641668656571",       /* m_name */
         "Generated CVODESim module",/* m_doc */
         -1,                         /* m_size */
         SimMethods,                 /* m_methods */
@@ -2239,15 +2492,16 @@ static PyMethodDef SimMethods[] = {
         NULL,                       /* m_free */
     };
 
-    PyMODINIT_FUNC PyInit_<?=module_name?>(void) {
+    PyMODINIT_FUNC PyInit_myokit_sim_1_8590818641668656571(void) {
         return PyModule_Create(&moduledef);
     }
 
 #else
 
     PyMODINIT_FUNC
-    init<?=module_name?>(void) {
-        (void) Py_InitModule("<?= module_name ?>", SimMethods);
+    initmyokit_sim_1_8590818641668656571(void) {
+        (void) Py_InitModule("myokit_sim_1_8590818641668656571", SimMethods);
     }
 
 #endif
+

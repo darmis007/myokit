@@ -12,6 +12,9 @@ import os
 import myokit
 import platform
 
+from collections import OrderedDict
+
+
 # Location of C template
 SOURCE_FILE = 'cvodessim.c'
 
@@ -93,13 +96,14 @@ class Simulation(myokit.CModule):
         An optional :class:`myokit.Protocol` to use as input for variables
         bound to ``pace``.
     ``sensitivities``
-        An optional tuple ``(variables, parameters)`` where ``variables``
-        specifies variables to return derivatives of, and ``parameters`` is a
-        list of variables or initial conditions to calculate derivatives _to_.
-        Each entry in ``variables`` must be a :class:`myokit.Variable`, a
+        An optional tuple ``(dependents, independents)`` where ``dependents``
+        is a list of variables or expressions to take derivatives of (``y`` in
+        ``dy/dx``) and ``independents`` is a list of variables or expressions
+        to calculate derivatives to (``x`` in ``dy/dx``).
+        Each entry in ``dependents`` must be a :class:`myokit.Variable`, a
         :class:`myokit.Name`, a :class:`myokit.Derivative`, or a string with
         either a fully qualified variable name or a ``dot()`` expression.
-        Each entry in ``parameters`` must be a :class:`myokit.Variable`, a
+        Each entry in ``independents`` must be a :class:`myokit.Variable`, a
         :class:`myokit.Name`, a :class:`myokit.InitialValue`, or a string with
         either a fully qualified variable name or an ``init()`` expression.
     ``apd_var``
@@ -129,26 +133,27 @@ class Simulation(myokit.CModule):
         del(protocol)
 
         # Check sensitivity arguments
+        #TODO: Store sensitivities for pickling
         self._sensitivities = (sensitivities is not None)
-        self._s_variables = []
-        self._s_parameters = []
+        self._s_independents = []
+        self._s_dependents = []
         if self._sensitivities:
             try:
-                s_variables, s_parameters = sensitivities
-                s_variables = list(s_variables)
-                s_parameters = list(s_parameters)
+                s_dependents, s_independents = sensitivities
+                s_dependents = list(s_dependents)
+                s_independents = list(s_independents)
             except Exception:
                 raise ValueError(
-                    'The argument "sensitivities" must be a tuple containing'
-                    ' two lists, or None.')
-            if len(s_variables) == 0 or len(s_parameters) == 0:
+                    'The argument "sensitivities" must be None, or a tuple'
+                    ' containing two lists.')
+            if len(s_dependents) == 0 or len(s_independents) == 0:
                 raise ValueError(
-                    'The argument "sensitivities" must be a tuple containing'
-                    ' two non-empty lists, or None.')
+                    'If the argument "sensitivities" is not None, the lists it'
+                    ' contains must not be empty.')
 
-            # Check variables, make sure all are Name or Derivative objects
+            # Check dependents, make sure all are Name or Derivative objects
             # from the cloned model.
-            for x in s_variables:
+            for x in s_dependents:
                 deriv = False
                 if isinstance(x, myokit.Variable):
                     var = self._model.get(x.qname())
@@ -176,12 +181,12 @@ class Simulation(myokit.CModule):
                         ' variables (got ' + str(var.qname()) + ').')
                 # Note: constants are fine, just not very useful! But may be
                 # easy, e.g. when working with multiple models.
-                self._s_variables.append(lhs)
-            del(s_variables)
+                self._s_dependents.append(lhs)
+            del(s_dependents)
 
-            # Check parameters, make sure all are Name or InitialValue objects
-            # from the cloned model.
-            for x in s_parameters:
+            # Check independents, make sure all are Name or InitialValue
+            # objects from the cloned model.
+            for x in s_independents:
                 init = False
                 if isinstance(x, myokit.Variable):
                     var = self._model.get(x.qname())
@@ -209,8 +214,8 @@ class Simulation(myokit.CModule):
                         'Sensitivity with respect to ' + var.qname() +
                         ' requested, but this is not a literal variable (it'
                         ' depends on other variables).')
-                self._s_parameters.append(lhs)
-            del(s_parameters)
+                self._s_independents.append(lhs)
+            del(s_independents)
         del(sensitivities)
 
         # Check potential and threshold values
@@ -233,6 +238,101 @@ class Simulation(myokit.CModule):
         # Starting time
         self._time = 0
 
+        #
+        # Generate arguments for module
+        #
+
+        # Get unique names in model: variable names will be prepended so don't
+        # bother with keywords.
+        self._model.create_unique_names()
+
+        # Remove any unused bindings
+        bound_variables = self._model.prepare_bindings({
+            'time': None,
+            'pace': None,
+            'realtime': None,
+            'evaluations': None,
+        })
+
+        # Split sensitivity independent variables into parameters and initials
+        parameters = [] # LhsExpressions for parameters
+        initials = []   # LhsExpressions for initial values
+        for p in self._s_independents:
+            if isinstance(p, myokit.Name):
+                parameters.append(p)
+            else:
+                initials.append(p)
+
+        # Get equations in solvable order (grouped by component)
+        equations = self._model.solvable_order()
+
+        # Derive equations needed to calculate the requested sensitivities,
+        # assuming that the sensitivities of the state variables are known.
+        s_output_equations = []
+        if self._sensitivities:
+            # Get expressions needed to evaluate the variables we want to
+            # output partial derivatives of.
+
+            # First, get variables instead of LhsExpressions. Ignore
+            # Name(state), as we already have these, and convert
+            # Derivative(Name(state)) into variables.
+            output_variables = [
+                lhs.var() for lhs in self._s_dependents
+                if not (isinstance(lhs, myokit.Name) and lhs.var().is_state())]
+
+            # Now call expressions_for, which will return expressions to
+            # evaluate the rhs for each variable (i.e. the dot(x) rhs for
+            # states).
+            output_equations, _ = self._model.expressions_for(
+                *output_variables)
+            del(output_variables)
+
+            # Gather output expressions for each parameter or initial value we
+            # want sensitivities w.r.t.
+            for expr in self._s_independents:
+                eqs = []
+                for eq in output_equations:
+                    rhs = eq.rhs.diff(expr, independent_states=False)
+                    if rhs.is_number(0) and eq.lhs not in self._s_dependents:
+                        continue
+                    lhs = myokit.PartialDerivative(eq.lhs, expr)
+                    eqs.append(myokit.Equation(lhs, rhs))
+                s_output_equations.append(eqs)
+            del(output_equations)
+
+        # Partition constants into four groups, store mapping for each
+        # Constants without any dependencies: var to value
+        literals = OrderedDict()
+        # Constants that only depend on literals (or each other): var to eq
+        literal_derived = OrderedDict()
+        # Constants that are treated as parameters in sensitivity analysis:
+        # var to value
+        pdeps = set(parameters)
+        parameters = OrderedDict()
+        # Constants that depend on parameters: var to eq
+        parameter_derived = OrderedDict()
+        for label, eqs in equations.items():
+            for eq in eqs.equations(const=True):
+                var = eq.lhs.var()
+                if eq.lhs in pdeps:
+                    parameters[var] = eq.rhs.eval()
+                elif var.is_literal():
+                    literals[var] = eq.rhs.eval()
+                elif eq.rhs.references().intersection(pdeps):
+                    pdeps.add(eq.lhs)
+                    parameter_derived[var] = eq
+                else:
+                    literal_derived[var] = eq
+        del(pdeps)
+
+        # Store literals and parameters for use in set_constant and sim_init
+        self._literals = literals
+        self._parameters = parameters
+
+        #
+        # Generate module
+        #
+
         # Unique simulation id
         Simulation._index += 1
         module_name = 'myokit_sim_' + str(Simulation._index)
@@ -242,9 +342,17 @@ class Simulation(myokit.CModule):
         args = {
             'module_name': module_name,
             'model': self._model,
+            'equations': equations,
+            's_dependents': self._s_dependents,
+            's_independents': self._s_independents,
+            's_output_equations': s_output_equations,
             'apd_var': self._apd_var,
-            'variables': self._s_variables,
-            'parameters': self._s_parameters,
+            'bound_variables': bound_variables,
+            'literals': literals,
+            'literal_derived': literal_derived,
+            'parameters': parameters,
+            'parameter_derived': parameter_derived,
+            'initials': initials,
         }
         fname = os.path.join(myokit.DIR_CFUNC, SOURCE_FILE)
 
@@ -503,83 +611,112 @@ class Simulation(myokit.CModule):
             bench = None
 
         # Run simulation
-        with myokit.SubCapture() as capture:
-            if duration > 0:
-                # Initialize
-                state = [0] * len(self._state)
-                bound = [0, 0, 0, 0]    # time, pace, realtime, evaluations
-                self._sim.sim_init(
-                    tmin,
-                    tmax,
-                    list(self._state),
-                    state,
-                    bound,
-                    self._protocol,
-                    self._fixed_form_protocol,
-                    log,
-                    log_interval,
-                    log_times,
-                    sensitivity_list,
-                    root_list,
-                    root_threshold,
-                    bench,
-                )
-                t = tmin
-                try:
-                    if progress:
-                        # Allow progress reporters to bypass the subcapture
-                        progress._set_output_stream(capture.bypass())
-                        # Loop with feedback
-                        with progress.job(msg):
-                            r = 1.0 / duration if duration != 0 else 1
-                            while t < tmax:
-                                t = self._sim.sim_step()
-                                if not progress.update(min((t - tmin) * r, 1)):
-                                    raise myokit.SimulationCancelledError()
-                    else:
-                        # Loop without feedback
+        #TODO
+        #TODO
+        #TODO
+        #TODO
+        #with myokit.SubCapture() as capture:
+        if duration > 0:
+            # Initialize
+            state = [0] * len(self._state)
+            bound = [0, 0, 0, 0]    # time, pace, realtime, evaluations
+            self._sim.sim_init(
+                # 0. Initial time
+                tmin,
+                # 1. Final time
+                tmax,
+                # 2. Initial state
+                list(self._state),
+                # 3. Space to store the final state
+                state,
+                # 4. Space to store the bound variable values
+                bound,
+                # 5. Literal values
+                list(self._literals.values()),
+                # 6. Parameter values
+                list(self._parameters.values()),
+                # 7. An event-based pacing protocol
+                self._protocol,
+                # 8. A fixed-form protocol
+                self._fixed_form_protocol,
+                # 9. A DataLog
+                log,
+                # A. The log interval, or 0
+                log_interval,
+                # B. A list of predetermind logging times, or None
+                log_times,
+                # C. A list to store calculated sensitivities in
+                sensitivity_list,
+                # D. A list to store calculated root crossing times and
+                #    directions in, or None
+                root_list,
+                # E. The threshold for root crossing (can be 0 too, only
+                #    used if root_list is a list).
+                root_threshold,
+                # F. A Python method that returns the system time
+                #    accurately.
+                bench,
+            )
+            t = tmin
+            try:
+                if progress:
+                    # Allow progress reporters to bypass the subcapture
+                    #TODO
+                    #TODO
+                    #TODO
+                    #TODO
+                    #progress._set_output_stream(capture.bypass())
+                    # Loop with feedback
+                    with progress.job(msg):
+                        r = 1.0 / duration if duration != 0 else 1
                         while t < tmax:
                             t = self._sim.sim_step()
-                except ArithmeticError:
-                    self._error_state = list(state)
-                    txt = ['A numerical error occurred during simulation at'
-                           ' t = ' + str(t) + '.', 'Last reached state: ']
-                    txt.extend([
-                        '  ' + x for x
-                        in self._model.format_state(state).splitlines()])
-                    txt.append('Inputs for binding: ')
-                    txt.append('  time        = ' + myokit.strfloat(bound[0]))
-                    txt.append('  pace        = ' + myokit.strfloat(bound[1]))
-                    txt.append('  realtime    = ' + myokit.strfloat(bound[2]))
-                    txt.append('  evaluations = ' + myokit.strfloat(bound[3]))
-                    try:
-                        self._model.eval_state_derivatives(state)
-                    except myokit.NumericalError as en:
-                        txt.append(str(en))
-                    raise myokit.SimulationError('\n'.join(txt))
-                except Exception as e:
+                            if not progress.update(min((t - tmin) * r, 1)):
+                                raise myokit.SimulationCancelledError()
+                else:
+                    # Loop without feedback
+                    while t < tmax:
+                        t = self._sim.sim_step()
+            except ArithmeticError:
+                self._error_state = list(state)
+                txt = ['A numerical error occurred during simulation at'
+                       ' t = ' + str(t) + '.', 'Last reached state: ']
+                txt.extend([
+                    '  ' + x for x
+                    in self._model.format_state(state).splitlines()])
+                txt.append('Inputs for binding: ')
+                txt.append('  time        = ' + myokit.strfloat(bound[0]))
+                txt.append('  pace        = ' + myokit.strfloat(bound[1]))
+                txt.append('  realtime    = ' + myokit.strfloat(bound[2]))
+                txt.append('  evaluations = ' + myokit.strfloat(bound[3]))
+                try:
+                    self._model.eval_state_derivatives(state)
+                except myokit.NumericalError as en:
+                    txt.append(str(en))
+                raise myokit.SimulationError('\n'.join(txt))
+            except Exception as e:
 
-                    # Store error state
-                    self._error_state = list(state)
+                # Store error state
+                self._error_state = list(state)
 
-                    # Check for known CVODE errors
-                    if 'Function CVode()' in str(e):
-                        raise myokit.SimulationError(str(e))
+                # Check for known CVODE errors
+                if 'Function CVode()' in str(e):
+                    raise myokit.SimulationError(str(e))
 
-                    # Check for zero step error
-                    if str(e)[:10] == 'ZERO_STEP ':  # pragma: no cover
-                        t = float(str(e)[10:])
-                        raise myokit.SimulationError(
-                            'Maximum number of zero-size steps made at t='
-                            + str(t))
+                # Check for zero step error
+                if str(e)[:10] == 'ZERO_STEP ':  # pragma: no cover
+                    t = float(str(e)[10:])
+                    raise myokit.SimulationError(
+                        'Maximum number of zero-size steps made at t='
+                        + str(t))
 
-                    # Unknown exception: re-raise!
-                    raise
-                finally:
-                    # Clean even after KeyboardInterrupt or other Exception
-                    self._sim.sim_clean()
-                # Update internal state
-                self._state = state
+                # Unknown exception: re-raise!
+                raise
+            finally:
+                # Clean even after KeyboardInterrupt or other Exception
+                self._sim.sim_clean()
+            # Update internal state
+            self._state = state
 
         # Calculate apds
         if root_list is not None:
@@ -617,21 +754,27 @@ class Simulation(myokit.CModule):
         The constant ``var`` can be given as a :class:`Variable` or a string
         containing a variable qname. The ``value`` should be given as a float.
         """
+        # Get variable
         value = float(value)
         if isinstance(var, myokit.Variable):
             var = var.qname()
         var = self._model.get(var)
-        if not var.is_literal():
-            raise ValueError(
-                'The given variable <' + var.qname() + '> is not a literal.')
 
-        # Update value in internal model: This is required for error handling
-        # (to show the correct values), but also takes care of constants in
-        # pickled/unpickled simulations.
-        self._model.set_value(var.qname(), value)
+        # Update value in literal or parameter map
+        try:
+            self._literals[var] = value
+        except KeyError:
+            try:
+                self._parameters[var] = value
+            except KeyError:
+                raise ValueError(
+                    'The given variable <' + var.qname() + '> is not a'
+                    ' literal.')
 
-        # Update value in compiled simulation module
-        self._sim.set_constant(var.qname(), value)
+        # Update value in internal model: This is required for error handling,
+        # when self._model.eval_state_derivatives is called.
+        # It also ensures the modified value is retained when pickling.
+        self._model.set_value(var, value)
 
     def set_default_state(self, state):
         """
