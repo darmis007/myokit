@@ -139,7 +139,6 @@ struct Model_Mem {
     realtype C_gK1;
 
     /* Parameter-derived constants */
-    realtype C_gNa2;
 
     /* Intermediary variables */
     realtype V_i_ion;
@@ -171,15 +170,8 @@ struct Model_Mem {
     realtype V_Ib;
 
     /* Sensitivity output variables */
-    realtype S0_V_ina_m_alpha;
-    realtype S0_V_ina_m_beta;
-    realtype S0_V_gNa2;
     realtype S0_V_INa;
-    realtype S1_V_ina_m_alpha;
-    realtype S1_V_ina_m_beta;
     realtype S1_V_INa;
-    realtype S2_V_ina_m_alpha;
-    realtype S2_V_ina_m_beta;
     realtype S2_V_INa;
 
     /* State variables and derivatives */
@@ -383,70 +375,6 @@ Model Model_Create(Model_Flag* flag)
     /* Set flag to indicate success */
     if (flag != 0) { *flag = Model_OK; }
 
-    printf("----------------------------------------------\n");
-    printf("model->C_C = %e\n", model->C_C);
-    printf("model->Y_V = %e\n", model->Y_V);
-    printf("model->V_i_ion = %e\n", model->V_i_ion);
-    printf("model->V_i_stim = %e\n", model->V_i_stim);
-    printf("model->C_stim_amplitude = %e\n", model->C_stim_amplitude);
-    printf("model->C_i_diff = %e\n", model->C_i_diff);
-    printf("model->Y_x = %e\n", model->Y_x);
-    printf("model->V_ik_x_alpha = %e\n", model->V_ik_x_alpha);
-    printf("model->V_ik_x_beta = %e\n", model->V_ik_x_beta);
-    printf("model->V_xi = %e\n", model->V_xi);
-    printf("model->V_IK = %e\n", model->V_IK);
-    printf("model->C_gK = %e\n", model->C_gK);
-    printf("model->C_ik_IK_E = %e\n", model->C_ik_IK_E);
-    printf("model->C_PNa_K = %e\n", model->C_PNa_K);
-    printf("model->C_ENa = %e\n", model->C_ENa);
-    printf("model->V_a = %e\n", model->V_a);
-    printf("model->Y_m = %e\n", model->Y_m);
-    printf("model->V_ina_m_alpha = %e\n", model->V_ina_m_alpha);
-    printf("model->V_ina_m_beta = %e\n", model->V_ina_m_beta);
-    printf("model->Y_h = %e\n", model->Y_h);
-    printf("model->V_ina_h_alpha = %e\n", model->V_ina_h_alpha);
-    printf("model->V_ina_h_beta = %e\n", model->V_ina_h_beta);
-    printf("model->Y_j = %e\n", model->Y_j);
-    printf("model->V_ina_j_alpha = %e\n", model->V_ina_j_alpha);
-    printf("model->V_ina_j_beta = %e\n", model->V_ina_j_beta);
-    printf("model->P_gNa = %e\n", model->P_gNa);
-    printf("model->C_gNa2 = %e\n", model->C_gNa2);
-    printf("model->V_INa = %e\n", model->V_INa);
-    printf("model->C_p1 = %e\n", model->C_p1);
-    printf("model->C_xp1 = %e\n", model->C_xp1);
-    printf("model->C_gKp = %e\n", model->C_gKp);
-    printf("model->V_Kp = %e\n", model->V_Kp);
-    printf("model->V_IKp = %e\n", model->V_IKp);
-    printf("model->V_ica_E = %e\n", model->V_ica_E);
-    printf("model->Y_Ca_i = %e\n", model->Y_Ca_i);
-    printf("model->Y_d = %e\n", model->Y_d);
-    printf("model->V_ica_d_alpha = %e\n", model->V_ica_d_alpha);
-    printf("model->V_ica_d_beta = %e\n", model->V_ica_d_beta);
-    printf("model->Y_f = %e\n", model->Y_f);
-    printf("model->V_ica_f_alpha = %e\n", model->V_ica_f_alpha);
-    printf("model->V_ica_f_beta = %e\n", model->V_ica_f_beta);
-    printf("model->P_gCa = %e\n", model->P_gCa);
-    printf("model->V_ICa = %e\n", model->V_ICa);
-    printf("model->C_ik1_E = %e\n", model->C_ik1_E);
-    printf("model->C_gK1 = %e\n", model->C_gK1);
-    printf("model->V_g = %e\n", model->V_g);
-    printf("model->V_ik1_g_alpha = %e\n", model->V_ik1_g_alpha);
-    printf("model->V_ik1_g_beta = %e\n", model->V_ik1_g_beta);
-    printf("model->V_IK1 = %e\n", model->V_IK1);
-    printf("model->C_gb = %e\n", model->C_gb);
-    printf("model->C_Eb = %e\n", model->C_Eb);
-    printf("model->V_Ib = %e\n", model->V_Ib);
-    printf("model->C_K_o = %e\n", model->C_K_o);
-    printf("model->C_K_i = %e\n", model->C_K_i);
-    printf("model->C_Na_o = %e\n", model->C_Na_o);
-    printf("model->C_Na_i = %e\n", model->C_Na_i);
-    printf("model->C_Ca_o = %e\n", model->C_Ca_o);
-    printf("model->C_RTF = %e\n", model->C_RTF);
-    printf("model->C_R = %e\n", model->C_R);
-    printf("model->C_T = %e\n", model->C_T);
-    printf("model->C_F = %e\n", model->C_F);
-    printf("model->V_time = %e\n", model->V_time);
-    printf("model->V_pace = %e\n", model->V_pace);
 
 
     /* Return newly created model */
@@ -546,7 +474,6 @@ Model_Flag
 Model_UpdateParameterDerivedVariables(Model model)
 {
     if (model == NULL) return Model_INVALID_MODEL;
-    model->C_gNa2 = 2.0 * model->P_gNa;
 
     return Model_OK;
 }
@@ -580,10 +507,10 @@ Model_UpdateDerivatives(Model model)
     model->V_ina_m_alpha = 0.32 * (model->Y_V + 47.13) / (1.0 - exp((-0.1) * (model->Y_V + 47.13)));
     model->V_ina_m_beta = 0.08 * exp((-model->Y_V) / 11.0);
     model->D_m = model->V_ina_m_alpha * (1.0 - model->Y_m) - model->V_ina_m_beta * model->Y_m;
+    model->V_INa = model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * (model->Y_V - model->C_ENa);
     model->V_ina_j_alpha = model->V_a * ((-127140.0) * exp(0.2444 * model->Y_V) - 3.474e-05 * exp((-0.04391) * model->Y_V)) * (model->Y_V + 37.78) / (1.0 + exp(0.311 * (model->Y_V + 79.23)));
     model->V_ina_j_beta = model->V_a * (0.1212 * exp((-0.01052) * model->Y_V) / (1.0 + exp((-0.1378) * (model->Y_V + 40.14)))) + (1.0 - model->V_a) * (0.3 * exp((-2.535e-07) * model->Y_V) / (1.0 + exp((-0.1) * (model->Y_V + 32.0))));
     model->D_j = model->V_ina_j_alpha * (1.0 - model->Y_j) - model->V_ina_j_beta * model->Y_j;
-    model->V_INa = model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * (model->Y_V - model->C_ENa) + 1e-05 * model->D_m;
     model->V_ina_h_alpha = model->V_a * 0.135 * exp((80.0 + model->Y_V) / (-6.8));
     model->V_ina_h_beta = model->V_a * (model->C_xp1 * exp(0.079 * model->Y_V) + 310000.0 * exp(0.35 * model->Y_V)) + (1.0 - model->V_a) / (0.13 * (1.0 + exp((model->Y_V + 10.66) / (-11.1))));
     model->D_h = model->V_ina_h_alpha * (1.0 - model->Y_h) - model->V_ina_h_beta * model->Y_h;
@@ -614,78 +541,6 @@ Model_UpdateDerivatives(Model model)
     model->V_i_stim = model->V_pace * model->C_stim_amplitude;
     model->D_V = (-(1.0 / model->C_C)) * (model->V_i_ion + model->C_i_diff + model->V_i_stim);
     
-    printf("----------------------------------------------\n");
-    printf("model->Y_V = %e\n", model->Y_V);
-    printf("model->Y_m = %e\n", model->Y_m);
-    printf("model->Y_h = %e\n", model->Y_h);
-    printf("model->Y_j = %e\n", model->Y_j);
-    printf("model->Y_d = %e\n", model->Y_d);
-    printf("model->Y_f = %e\n", model->Y_f);
-    printf("model->Y_x = %e\n", model->Y_x);
-    printf("model->Y_Ca_i = %e\n", model->Y_Ca_i);
-    printf("model->C_Eb = %e\n", model->C_Eb);
-    printf("model->C_gb = %e\n", model->C_gb);
-    printf("model->V_Ib = %e\n", model->V_Ib);
-    printf("model->C_Ca_o = %e\n", model->C_Ca_o);
-    printf("model->C_F = %e\n", model->C_F);
-    printf("model->C_K_i = %e\n", model->C_K_i);
-    printf("model->C_K_o = %e\n", model->C_K_o);
-    printf("model->C_Na_i = %e\n", model->C_Na_i);
-    printf("model->C_Na_o = %e\n", model->C_Na_o);
-    printf("model->C_R = %e\n", model->C_R);
-    printf("model->C_T = %e\n", model->C_T);
-    printf("model->C_RTF = %e\n", model->C_RTF);
-    printf("model->V_pace = %e\n", model->V_pace);
-    printf("model->V_time = %e\n", model->V_time);
-    printf("model->V_xi = %e\n", model->V_xi);
-    printf("model->V_ik_x_alpha = %e\n", model->V_ik_x_alpha);
-    printf("model->V_ik_x_beta = %e\n", model->V_ik_x_beta);
-    printf("model->D_x = %e\n", model->D_x);
-    printf("model->C_PNa_K = %e\n", model->C_PNa_K);
-    printf("model->C_gK = %e\n", model->C_gK);
-    printf("model->C_ik_IK_E = %e\n", model->C_ik_IK_E);
-    printf("model->V_IK = %e\n", model->V_IK);
-    printf("model->C_ENa = %e\n", model->C_ENa);
-    printf("model->V_a = %e\n", model->V_a);
-    printf("model->P_gNa = %e\n", model->P_gNa);
-    printf("model->C_p1 = %e\n", model->C_p1);
-    printf("model->V_ina_m_alpha = %e\n", model->V_ina_m_alpha);
-    printf("model->V_ina_m_beta = %e\n", model->V_ina_m_beta);
-    printf("model->D_m = %e\n", model->D_m);
-    printf("model->C_gNa2 = %e\n", model->C_gNa2);
-    printf("model->C_xp1 = %e\n", model->C_xp1);
-    printf("model->V_ina_j_alpha = %e\n", model->V_ina_j_alpha);
-    printf("model->V_ina_j_beta = %e\n", model->V_ina_j_beta);
-    printf("model->D_j = %e\n", model->D_j);
-    printf("model->V_INa = %e\n", model->V_INa);
-    printf("model->V_ina_h_alpha = %e\n", model->V_ina_h_alpha);
-    printf("model->V_ina_h_beta = %e\n", model->V_ina_h_beta);
-    printf("model->D_h = %e\n", model->D_h);
-    printf("model->V_ica_E = %e\n", model->V_ica_E);
-    printf("model->P_gCa = %e\n", model->P_gCa);
-    printf("model->V_ica_d_alpha = %e\n", model->V_ica_d_alpha);
-    printf("model->V_ica_d_beta = %e\n", model->V_ica_d_beta);
-    printf("model->D_d = %e\n", model->D_d);
-    printf("model->V_ica_f_alpha = %e\n", model->V_ica_f_alpha);
-    printf("model->V_ica_f_beta = %e\n", model->V_ica_f_beta);
-    printf("model->D_f = %e\n", model->D_f);
-    printf("model->V_ICa = %e\n", model->V_ICa);
-    printf("model->D_Ca_i = %e\n", model->D_Ca_i);
-    printf("model->C_ik1_E = %e\n", model->C_ik1_E);
-    printf("model->C_gK1 = %e\n", model->C_gK1);
-    printf("model->V_ik1_g_alpha = %e\n", model->V_ik1_g_alpha);
-    printf("model->V_ik1_g_beta = %e\n", model->V_ik1_g_beta);
-    printf("model->V_g = %e\n", model->V_g);
-    printf("model->V_IK1 = %e\n", model->V_IK1);
-    printf("model->V_Kp = %e\n", model->V_Kp);
-    printf("model->C_gKp = %e\n", model->C_gKp);
-    printf("model->V_IKp = %e\n", model->V_IKp);
-    printf("model->C_C = %e\n", model->C_C);
-    printf("model->C_i_diff = %e\n", model->C_i_diff);
-    printf("model->V_i_ion = %e\n", model->V_i_ion);
-    printf("model->C_stim_amplitude = %e\n", model->C_stim_amplitude);
-    printf("model->V_i_stim = %e\n", model->V_i_stim);
-    printf("model->D_V = %e\n", model->D_V);
 
     return Model_OK;
 }
@@ -905,7 +760,7 @@ rhs(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     }
 
     /* Fill ydot and return */
-    for (i=0; i<model->n_parameters; i++) {
+    for (i=0; i<model->n_states; i++) {
         NV_Ith_S(ydot, i) = model->derivatives[i];
     }
 
@@ -929,39 +784,34 @@ static int
 calculate_sensitivity_outputs(realtype t, N_Vector y, N_Vector ydot,
                               N_Vector* yS, N_Vector* ySdot, void* user_data)
 {
-    FSys_Flag flag_fpacing;
-    UserData fdata;
+    int i, j, k;
 
-    /* Recast user data */
-    fdata = (UserData) user_data;
+    /* TODO: Memoisation */
+    rhs(t, y, ydot, user_data);
 
-    /* Fixed-form pacing? Then look-up correct value of pacing variable! */
-    if (fpacing != NULL) {
-        engine_pace = FSys_GetLevel(fpacing, t, &flag_fpacing);
-        if (flag_fpacing != FSys_OK) { /* This should never happen */
-            FSys_SetPyErr(flag_fpacing);
-            return -1;  /* Negative value signals irrecoverable error to CVODE */
+    /* Unpack state sensitivities */
+    for (i=0; i<model->n_sens; i++) {
+        for (j=0; j<model->n_states; j++) {
+            model->s_states[i * model->n_states + j] = NV_Ith_S(yS[i], j) * 0;
         }
     }
+
     /* Sensitivity w.r.t. ina.gNa */
-    model->S0_V_ina_m_alpha = (0.32 * model->S0_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S0_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
-    model->S0_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S0_Y_V) / 11.0));
-    model->S0_D_m = model->S0_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S0_Y_m) - (model->S0_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S0_Y_m);
-    model->S0_V_gNa2 = 2.0 * 1.0;
-    model->S0_V_INa = (((model->S0_V_gNa2 * pow(model->Y_m, 3.0) + model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S0_Y_m)) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S0_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S0_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S0_Y_V + 1e-05 * model->S0_D_m;
+    model->S0_V_INa = (((1.0 * pow(model->Y_m, 3.0) + model->P_gNa * (3.0 * pow(model->Y_m, 2.0) * model->S0_Y_m)) * model->Y_h + model->P_gNa * pow(model->Y_m, 3.0) * model->S0_Y_h) * model->Y_j + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->S0_Y_j) * (model->Y_V - model->C_ENa) + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S0_Y_V;
 
     /* Sensitivity w.r.t. ica.gCa */
-    model->S1_V_ina_m_alpha = (0.32 * model->S1_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S1_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
-    model->S1_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S1_Y_V) / 11.0));
-    model->S1_D_m = model->S1_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S1_Y_m) - (model->S1_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S1_Y_m);
-    model->S1_V_INa = ((model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S1_Y_m) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S1_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S1_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S1_Y_V + 1e-05 * model->S1_D_m;
+    model->S1_V_INa = ((model->P_gNa * (3.0 * pow(model->Y_m, 2.0) * model->S1_Y_m) * model->Y_h + model->P_gNa * pow(model->Y_m, 3.0) * model->S1_Y_h) * model->Y_j + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->S1_Y_j) * (model->Y_V - model->C_ENa) + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S1_Y_V;
 
     /* Sensitivity w.r.t. init(ica.Ca_i) */
-    model->S2_V_ina_m_alpha = (0.32 * model->S2_Y_V * (1.0 - exp((-0.1) * (model->Y_V + 47.13))) - 0.32 * (model->Y_V + 47.13) * (-(exp((-0.1) * (model->Y_V + 47.13)) * ((-0.1) * model->S2_Y_V)))) / pow(1.0 - exp((-0.1) * (model->Y_V + 47.13)), 2.0);
-    model->S2_V_ina_m_beta = 0.08 * (exp((-model->Y_V) / 11.0) * ((-model->S2_Y_V) / 11.0));
-    model->S2_D_m = model->S2_V_ina_m_alpha * (1.0 - model->Y_m) + model->V_ina_m_alpha * (-model->S2_Y_m) - (model->S2_V_ina_m_beta * model->Y_m + model->V_ina_m_beta * model->S2_Y_m);
-    model->S2_V_INa = ((model->C_gNa2 * (3.0 * pow(model->Y_m, 2.0) * model->S2_Y_m) * model->Y_h + model->C_gNa2 * pow(model->Y_m, 3.0) * model->S2_Y_h) * model->Y_j + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->S2_Y_j) * (model->Y_V - model->C_ENa) + model->C_gNa2 * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S2_Y_V + 1e-05 * model->S2_D_m;
+    model->S2_V_INa = ((model->P_gNa * (3.0 * pow(model->Y_m, 2.0) * model->S2_Y_m) * model->Y_h + model->P_gNa * pow(model->Y_m, 3.0) * model->S2_Y_h) * model->Y_j + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->S2_Y_j) * (model->Y_V - model->C_ENa) + model->P_gNa * pow(model->Y_m, 3.0) * model->Y_h * model->Y_j * model->S2_Y_V;
 
+
+    /* Fill ySdot and return */
+    for (i=0; i<model->n_sens; i++) {
+        for (j=0; j<model->n_states; j++) {
+            NV_Ith_S(ySdot[i], j) = model->s_derivatives[i * model->n_states + j];
+        }
+    }
 
     return 0;
 }
@@ -1820,15 +1670,15 @@ sim_init(PyObject *self, PyObject *args)
                 l2 = PyTuple_New(model->n_sens);
                 if (l2 == NULL) return sim_clean();
 
-                flt = PyFloat_FromDouble(NV_Ith_S(sy[0], 0));
+                flt = PyFloat_FromDouble(model->S0_Y_V);
                 if (flt == NULL) return sim_clean();
                 flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
                 if (flag < 0) return sim_clean();
-                flt = PyFloat_FromDouble(NV_Ith_S(sy[1], 0));
+                flt = PyFloat_FromDouble(model->S1_Y_V);
                 if (flt == NULL) return sim_clean();
                 flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
                 if (flag < 0) return sim_clean();
-                flt = PyFloat_FromDouble(NV_Ith_S(sy[2], 0));
+                flt = PyFloat_FromDouble(model->S2_Y_V);
                 if (flt == NULL) return sim_clean();
                 flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
                 if (flag < 0) return sim_clean();
@@ -2065,7 +1915,7 @@ sim_step(PyObject *self, PyObject *args)
 
                     if (model->n_sens) {
                         /* Calculate sensitivities to output */
-                        calculate_sensitivity_outputs(engine_time, y, dy_log, sy_log, sdy_log, udata);
+                        calculate_sensitivity_outputs(engine_time, y_log, dy_log, sy_log, sdy_log, udata);
 
                         /* Write sensitivity matrix to log */
                         l1 = PyTuple_New(2);
@@ -2074,15 +1924,15 @@ sim_step(PyObject *self, PyObject *args)
                         l2 = PyTuple_New(model->n_sens);
                         if (l2 == NULL) return sim_clean();
 
-                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[0], 0));
+                        flt = PyFloat_FromDouble(model->S0_Y_V);
                         if (flt == NULL) return sim_clean();
                         flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
                         if (flag < 0) return sim_clean();
-                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[1], 0));
+                        flt = PyFloat_FromDouble(model->S1_Y_V);
                         if (flt == NULL) return sim_clean();
                         flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
                         if (flag < 0) return sim_clean();
-                        flt = PyFloat_FromDouble(NV_Ith_S(sy_log[2], 0));
+                        flt = PyFloat_FromDouble(model->S2_Y_V);
                         if (flt == NULL) return sim_clean();
                         flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
                         if (flag < 0) return sim_clean();
@@ -2175,7 +2025,7 @@ sim_step(PyObject *self, PyObject *args)
                 if (log_deriv || log_inter) {
                     /* If logging derivatives or intermediaries, calculate the
                        values for the current time. */
-                    /*TODO:REPLACE TODO*/
+                    /*TODO:REPLACE */
                     rhs(engine_time, y, dy_log, udata);
                 } else if (log_bound) {
                     /* Logging bounds but not derivs or inters: No need to run
@@ -2211,15 +2061,15 @@ sim_step(PyObject *self, PyObject *args)
                     l2 = PyTuple_New(model->n_sens);
                     if (l2 == NULL) return sim_clean();
 
-                    flt = PyFloat_FromDouble(NV_Ith_S(sy[0], 0));
+                    flt = PyFloat_FromDouble(model->S0_Y_V);
                     if (flt == NULL) return sim_clean();
                     flag = PyTuple_SetItem(l2, 0, flt); /* Steals reference to flt */
                     if (flag < 0) return sim_clean();
-                    flt = PyFloat_FromDouble(NV_Ith_S(sy[1], 0));
+                    flt = PyFloat_FromDouble(model->S1_Y_V);
                     if (flt == NULL) return sim_clean();
                     flag = PyTuple_SetItem(l2, 1, flt); /* Steals reference to flt */
                     if (flag < 0) return sim_clean();
-                    flt = PyFloat_FromDouble(NV_Ith_S(sy[2], 0));
+                    flt = PyFloat_FromDouble(model->S2_Y_V);
                     if (flt == NULL) return sim_clean();
                     flag = PyTuple_SetItem(l2, 2, flt); /* Steals reference to flt */
                     if (flag < 0) return sim_clean();
@@ -2482,7 +2332,7 @@ static PyMethodDef SimMethods[] = {
 
     static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
-        "myokit_sim_1_8590818641668656571",       /* m_name */
+        "myokit_sim_1_4384500282905115256",       /* m_name */
         "Generated CVODESim module",/* m_doc */
         -1,                         /* m_size */
         SimMethods,                 /* m_methods */
@@ -2492,15 +2342,15 @@ static PyMethodDef SimMethods[] = {
         NULL,                       /* m_free */
     };
 
-    PyMODINIT_FUNC PyInit_myokit_sim_1_8590818641668656571(void) {
+    PyMODINIT_FUNC PyInit_myokit_sim_1_4384500282905115256(void) {
         return PyModule_Create(&moduledef);
     }
 
 #else
 
     PyMODINIT_FUNC
-    initmyokit_sim_1_8590818641668656571(void) {
-        (void) Py_InitModule("myokit_sim_1_8590818641668656571", SimMethods);
+    initmyokit_sim_1_4384500282905115256(void) {
+        (void) Py_InitModule("myokit_sim_1_4384500282905115256", SimMethods);
     }
 
 #endif

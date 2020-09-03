@@ -813,20 +813,18 @@ static int
 calculate_sensitivity_outputs(realtype t, N_Vector y, N_Vector ydot,
                               N_Vector* yS, N_Vector* ySdot, void* user_data)
 {
-    FSys_Flag flag_fpacing;
-    UserData fdata;
+    int i, j, k;
 
-    /* Recast user data */
-    fdata = (UserData) user_data;
+    /* TODO: Memoisation */
+    rhs(t, y, ydot, user_data);
 
-    /* Fixed-form pacing? Then look-up correct value of pacing variable! */
-    if (fpacing != NULL) {
-        engine_pace = FSys_GetLevel(fpacing, t, &flag_fpacing);
-        if (flag_fpacing != FSys_OK) { /* This should never happen */
-            FSys_SetPyErr(flag_fpacing);
-            return -1;  /* Negative value signals irrecoverable error to CVODE */
+    /* Unpack state sensitivities */
+    for (i=0; i<model->n_sens; i++) {
+        for (j=0; j<model->n_states; j++) {
+            model->s_states[i * model->n_states + j] = NV_Ith_S(yS[i], j);
         }
     }
+
 <?
 for eqs in s_output_equations:
     for i, eq in enumerate(eqs):
@@ -835,6 +833,13 @@ for eqs in s_output_equations:
         print(tab + w.eq(eq) + ';')
     print()
 ?>
+    /* Fill ySdot and return */
+    for (i=0; i<model->n_sens; i++) {
+        for (j=0; j<model->n_states; j++) {
+            NV_Ith_S(ySdot[i], j) = model->s_derivatives[i * model->n_states + j];
+        }
+    }
+
     return 0;
 }
 
@@ -1651,7 +1656,7 @@ for var in model.variables(deep=True, state=False, bound=False, const=False):
             if (model->n_sens) {
                 /* Calculate sensitivities to output */
 
-                /* TODO: Call the rhs function that sets sdy_log */
+                /* TODO */
                 calculate_sensitivity_outputs(engine_time, y, dy_log, sy, sdy_log, udata);
 
                 /* Write sensitivity matrix to log */
@@ -1668,11 +1673,8 @@ def write_sens_matrix(t, sy):
         print()
 
         for j, e2 in enumerate(s_independents):
-            if e1.is_name() and e1.var().is_state():
-                print(tab*t + 'flt = PyFloat_FromDouble(NV_Ith_S(' + sy + '[' + str(j) + '], ' + str(var.indice()) + '));')
-            else:
-                pd = myokit.PartialDerivative(e1, e2)
-                print(tab*t + 'flt = PyFloat_FromDouble(' + v(pd) + ');')
+            pd = myokit.PartialDerivative(e1, e2)
+            print(tab*t + 'flt = PyFloat_FromDouble(' + v(pd) + ');')
             print(tab*t + 'if (flt == NULL) return sim_clean();')
             print(tab*t + 'flag = PyTuple_SetItem(l2, ' + str(j) + ', flt); /* Steals reference to flt */')
             print(tab*t + 'if (flag < 0) return sim_clean();')
@@ -1894,7 +1896,7 @@ sim_step(PyObject *self, PyObject *args)
 
                     if (model->n_sens) {
                         /* Calculate sensitivities to output */
-                        calculate_sensitivity_outputs(engine_time, y, dy_log, sy_log, sdy_log, udata);
+                        calculate_sensitivity_outputs(engine_time, y_log, dy_log, sy_log, sdy_log, udata);
 
                         /* Write sensitivity matrix to log */
 <?
@@ -1962,7 +1964,7 @@ write_sens_matrix(6, 'sy_log')
                 if (log_deriv || log_inter) {
                     /* If logging derivatives or intermediaries, calculate the
                        values for the current time. */
-                    /*TODO:REPLACE TODO*/
+                    /*TODO:REPLACE */
                     rhs(engine_time, y, dy_log, udata);
                 } else if (log_bound) {
                     /* Logging bounds but not derivs or inters: No need to run

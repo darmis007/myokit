@@ -3,7 +3,8 @@ import myokit
 import matplotlib.pyplot as plt
 import numpy as np
 
-m, p, _ = myokit.load('test.mmt')
+#m, p, _ = myokit.load('test.mmt')
+m, p, _ = myokit.load('example')
 
 #myokit.DEBUG = True
 
@@ -16,7 +17,7 @@ b = myokit.Benchmarker()
 s = myokit.Simulation(m, p, sensitivities)
 print('Compiled', b.time())
 b.reset()
-d, e = s.run(3000)#, log_interval=1)
+d, e = s.run(3000)# , log_interval=1)
 e = np.array(e)
 print(b.time())
 

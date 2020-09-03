@@ -86,10 +86,10 @@ dot(j) =  alpha * (1 - j) - beta * j
     beta  = a * (0.1212 [1/ms] * exp(-0.01052 [1/mV] * V) / (1 + exp(-0.1378 [1/mV] * (V + 40.14 [mV])))) \
           + (1 - a) * (0.3 [1/ms] * exp(-2.535e-7 [1/mV] * V) / (1 + exp(-0.1 [1/mV] * (V + 32 [mV]))))
         in [1/ms]
-gNa = 8 [mS/cm^2]
-    in [mS/cm^2]
-gNa2 = 2 * gNa
-INa = gNa2 * m^3 * h * j * (V - ENa) + 1e-5 * dot(m)
+#gNa = 8 [mS/cm^2]
+#gNa2 = 2 * gNa
+gNa = 16
+INa = gNa * m^3 * h * j * (V - ENa) #+ 1e-5 * dot(m)
     desc: Fast sodium current
     in [uA/cm^2]
 p1 = 1.56 [1/ms]
